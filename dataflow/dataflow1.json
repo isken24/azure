@@ -12,23 +12,67 @@
 					"name": "rawDataSQL"
 				}
 			],
-			"sinks": [],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "AzureSqlTable1",
+						"type": "DatasetReference"
+					},
+					"name": "sink1"
+				},
+				{
+					"dataset": {
+						"referenceName": "AzureSqlTable2",
+						"type": "DatasetReference"
+					},
+					"name": "sink2"
+				},
+				{
+					"dataset": {
+						"referenceName": "AzureSqlTable3",
+						"type": "DatasetReference"
+					},
+					"name": "sink3"
+				}
+			],
 			"transformations": [
 				{
-					"name": "Select1",
+					"name": "SaleDate",
 					"description": "Select columns 'Id, MonthSold, YearSold'"
 				},
 				{
-					"name": "Select2",
-					"description": "Select columns 'Id, LotArea, SalePrice'"
+					"name": "FinancialDetails",
+					"description": "Select columns 'Id, SaleType, SalePrice'"
 				},
 				{
-					"name": "Select3",
-					"description": "Select columns 'Id, SaleType'"
-				},
-				{
-					"name": "Select4",
+					"name": "PropertySpecs",
 					"description": "Select columns 'Id, YearBuilt, YearRemodAdd, OverallCond'"
+				},
+				{
+					"name": "GroupBySaleType",
+					"description": "Add aggregate columns SaleType"
+				},
+				{
+					"name": "OriginalData"
+				},
+				{
+					"name": "join1"
+				},
+				{
+					"name": "removeDuplicateColumns"
+				},
+				{
+					"name": "aggByYear"
+				},
+				{
+					"name": "aggByMonthAndYear"
+				},
+				{
+					"name": "join2"
+				},
+				{
+					"name": "removeDuplicateColumns1",
+					"description": "Remove YearSold duplicate column"
 				}
 			],
 			"scriptLines": [
@@ -125,28 +169,91 @@
 				"          YearSold = YrSold",
 				"     ),",
 				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> Select1",
+				"     skipDuplicateMapOutputs: true) ~> SaleDate",
 				"rawDataSQL select(mapColumn(",
 				"          Id,",
-				"          LotArea,",
+				"          SaleType,",
 				"          SalePrice",
 				"     ),",
 				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> Select2",
-				"rawDataSQL select(mapColumn(",
-				"          Id,",
-				"          SaleType",
-				"     ),",
-				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> Select3",
+				"     skipDuplicateMapOutputs: true) ~> FinancialDetails",
 				"rawDataSQL select(mapColumn(",
 				"          Id,",
 				"          YearBuilt,",
 				"          YearRemodAdd,",
-				"          OverallCond",
+				"          OverallCond,",
+				"          LotArea",
 				"     ),",
 				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> Select4"
+				"     skipDuplicateMapOutputs: true) ~> PropertySpecs",
+				"FinancialDetails aggregate(groupBy(SaleType),",
+				"     CountBySaleType = count()) ~> GroupBySaleType",
+				"FinancialDetails select(mapColumn(",
+				"          Id,",
+				"          SaleType",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> OriginalData",
+				"OriginalData, GroupBySaleType join(OriginalData@SaleType == GroupBySaleType@SaleType,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join1",
+				"join1 select(mapColumn(",
+				"          Id,",
+				"          SaleType = OriginalData@SaleType,",
+				"          CountBySaleType",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> removeDuplicateColumns",
+				"SaleDate aggregate(groupBy(YearSold),",
+				"     TotalCountByYear = count()) ~> aggByYear",
+				"SaleDate aggregate(groupBy(MonthSold,",
+				"          YearSold),",
+				"     CountByMonthAndYear = count()) ~> aggByMonthAndYear",
+				"aggByMonthAndYear, aggByYear join(aggByMonthAndYear@YearSold == aggByYear@YearSold,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join2",
+				"join2 select(mapColumn(",
+				"          MonthSold,",
+				"          YearSold = aggByMonthAndYear@YearSold,",
+				"          CountByMonthAndYear,",
+				"          TotalCountByYear",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> removeDuplicateColumns1",
+				"removeDuplicateColumns1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> sink1",
+				"removeDuplicateColumns sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> sink2",
+				"PropertySpecs sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> sink3"
 			]
 		}
 	}
