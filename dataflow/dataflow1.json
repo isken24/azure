@@ -15,21 +15,21 @@
 			"sinks": [
 				{
 					"dataset": {
-						"referenceName": "AzureSqlTable1",
+						"referenceName": "SaleDate",
 						"type": "DatasetReference"
 					},
 					"name": "sink1"
 				},
 				{
 					"dataset": {
-						"referenceName": "AzureSqlTable2",
+						"referenceName": "Finance",
 						"type": "DatasetReference"
 					},
-					"name": "sink2"
+					"name": "sinkFinance"
 				},
 				{
 					"dataset": {
-						"referenceName": "AzureSqlTable3",
+						"referenceName": "PropertySpecs",
 						"type": "DatasetReference"
 					},
 					"name": "sink3"
@@ -73,6 +73,9 @@
 				{
 					"name": "removeDuplicateColumns1",
 					"description": "Remove YearSold duplicate column"
+				},
+				{
+					"name": "AlterRow1"
 				}
 			],
 			"scriptLines": [
@@ -224,6 +227,7 @@
 				"     ),",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true) ~> removeDuplicateColumns1",
+				"removeDuplicateColumns alterRow(upsertIf(true())) ~> AlterRow1",
 				"removeDuplicateColumns1 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     deletable:false,",
@@ -234,16 +238,17 @@
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true,",
 				"     errorHandlingOption: 'stopOnFirstError') ~> sink1",
-				"removeDuplicateColumns sink(allowSchemaDrift: true,",
+				"AlterRow1 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     deletable:false,",
 				"     insertable:true,",
 				"     updateable:false,",
-				"     upsertable:false,",
+				"     upsertable:true,",
+				"     keys:['Id','SaleType'],",
 				"     format: 'table',",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true,",
-				"     errorHandlingOption: 'stopOnFirstError') ~> sink2",
+				"     errorHandlingOption: 'stopOnFirstError') ~> sinkFinance",
 				"PropertySpecs sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     deletable:false,",
