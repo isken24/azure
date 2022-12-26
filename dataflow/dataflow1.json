@@ -33,6 +33,13 @@
 						"type": "DatasetReference"
 					},
 					"name": "sink3"
+				},
+				{
+					"dataset": {
+						"referenceName": "AzureSqlTable2",
+						"type": "DatasetReference"
+					},
+					"name": "sink4"
 				}
 			],
 			"transformations": [
@@ -76,6 +83,18 @@
 				},
 				{
 					"name": "AlterRow1"
+				},
+				{
+					"name": "OriginalDataSaleDate"
+				},
+				{
+					"name": "AlterRow2"
+				},
+				{
+					"name": "join3"
+				},
+				{
+					"name": "AlterRow3"
 				}
 			],
 			"scriptLines": [
@@ -230,12 +249,27 @@
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true) ~> removeDuplicateColumns1",
 				"removeDuplicateColumns alterRow(upsertIf(true())) ~> AlterRow1",
-				"removeDuplicateColumns1 sink(allowSchemaDrift: true,",
+				"SaleDate select(mapColumn(",
+				"          Id,",
+				"          MonthSold,",
+				"          YearSold",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> OriginalDataSaleDate",
+				"removeDuplicateColumns1 alterRow(upsertIf(true())) ~> AlterRow2",
+				"OriginalDataSaleDate, aggByYear join(OriginalDataSaleDate@YearSold == aggByYear@YearSold,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join3",
+				"join3 alterRow(upsertIf(true())) ~> AlterRow3",
+				"AlterRow2 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     deletable:false,",
 				"     insertable:true,",
 				"     updateable:false,",
-				"     upsertable:false,",
+				"     upsertable:true,",
+				"     keys:['MonthSold','YearSold'],",
 				"     format: 'table',",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true,",
@@ -260,7 +294,18 @@
 				"     format: 'table',",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true,",
-				"     errorHandlingOption: 'stopOnFirstError') ~> sink3"
+				"     errorHandlingOption: 'stopOnFirstError') ~> sink3",
+				"AlterRow3 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:true,",
+				"     keys:['Id','MonthSold','YearSold'],",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     errorHandlingOption: 'stopOnFirstError') ~> sink4"
 			]
 		}
 	}
