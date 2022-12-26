@@ -22,7 +22,7 @@
 				},
 				{
 					"dataset": {
-						"referenceName": "Finance",
+						"referenceName": "AzureSqlTable1",
 						"type": "DatasetReference"
 					},
 					"name": "sinkFinance"
@@ -193,7 +193,8 @@
 				"     CountBySaleType = count()) ~> GroupBySaleType",
 				"FinancialDetails select(mapColumn(",
 				"          Id,",
-				"          SaleType",
+				"          SaleType,",
+				"          SalePrice",
 				"     ),",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true) ~> OriginalData",
@@ -204,6 +205,7 @@
 				"     broadcast: 'auto')~> join1",
 				"join1 select(mapColumn(",
 				"          Id,",
+				"          SalePrice,",
 				"          SaleType = OriginalData@SaleType,",
 				"          CountBySaleType",
 				"     ),",
